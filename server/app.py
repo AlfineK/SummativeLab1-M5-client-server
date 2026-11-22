@@ -52,6 +52,16 @@ def index():
     return "<h1>Open Food Facts</h1>"
 
 @app.route("/inventory",methods=['GET'])
+def get_all_inventory():
+    return jsonify ([item.to_dict() for item in inventory]),200
+
+
+@app.route("/inventory/<int:id>", methods=['GET'])
+def get_one_inventory(id):
+    product=find_product_by_id(id)
+    if product is None:
+        return jsonify({"Error":f"Item with ID {id} not found"}),404
+    return jsonify(product.to_dict()),200
 
 
 
