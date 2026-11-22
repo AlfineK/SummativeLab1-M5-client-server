@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL="http://127.0.0.1:5000"
+BASE_URL="http://127.0.0.1:5555"
 
 def ask_int(prompt,min_value=None,allow_blank=False):
     while True:
@@ -34,18 +34,21 @@ def call_api(method,path,json_data=None):
     url=f"{BASE_URL}{path}"
     try:
         if method=="GET":
-            res=requests.get(url)
+            res=requests.get(url,timeout=6)
         elif method=="POST":
-            res=requests.post(url,json=json_data)
+            res=requests.post(url,json=json_data,timeout=6)
         elif method=="PATCH":
-            res=requests.patch(url, json=json_data)
+            res=requests.patch(url, json=json_data,timeout=6)
         elif method=="DELETE":
-            res=requests.delete(url)
+            res=requests.delete(url,timeout=6)
         else:
           print(f"Unsupported HTTP method:{method}")
           return None
     except requests.ConnectionError:
         print("Error:Cannot connect to Flask API.Make sure 'python3 app.py'is running")
+        return None
+    except requests.Timeout:
+        print("Error:The request timed out")
         return None
     except requests.RequestException as err:
         print(f"Network error:{err}")
@@ -96,10 +99,10 @@ def view_items():
             print("Inventory is empty")
             return
         for item in items:
-            print(f"[{item['id']}]{item['product_name']} |Brand:{item['brands']} |Qty: {item['quantity']} |{item['price']:.2f}")
+            print(f"[{item['id']}] {item['product_name']} Brand:{item['brands']} Qty: {item['quantity']} Price:{item['price']:.2f}")
     elif mode=="b":
-        id=ask_int("Enter item ID: ", min_value=1)
-        item=call_api("GET",f"/inventory/{id}")
+        item_id=ask_int("Enter item ID: ", min_value=1)
+        item=call_api("GET",f"/inventory/{item_id}")
         if item:
             for k,v in item.items():
                 print(f" {k} :{v}")
@@ -108,8 +111,8 @@ def view_items():
 
 def update_price_or_stock():
     print("\n--- Update Price or Stock Level ---")
-    id = ask_int("Enter item ID: ", min_value=1)
-    current = call_api("GET", f"/inventory/{id}")
+    item_id = ask_int("Enter item ID: ", min_value=1)
+    current = call_api("GET", f"/inventory/{item_id}")
     if not current:
         return
 
@@ -127,20 +130,20 @@ def update_price_or_stock():
         print("No changes made.")
         return
 
-    updated = call_api("PATCH", f"/inventory/{id}", json_data=changes)
+    updated = call_api("PATCH", f"/inventory/{item_id}", json_data=changes)
     if updated:
         print("Updated item:", updated)
 
 
 def delete_item():
     print("\n--- Delete Product ---")
-    id = ask_int("Enter item ID to delete: ", min_value=1)
-    confirm = input(f"Delete item #{id}? (y/n): ").strip().lower()
+    item_id = ask_int("Enter item ID to delete: ", min_value=1)
+    confirm = input(f"Delete item #{item_id}? (y/n): ").strip().lower()
     if confirm != "y":
         print("Cancelled.")
         return
 
-    result = call_api("DELETE", f"/inventory/{id}")
+    result = call_api("DELETE", f"/inventory/{item_id}")
     if result:
         print(result.get("message", "Deleted."))
 
@@ -176,3 +179,34 @@ def find_on_api():
         print(f"  Brand:       {prod.get('brands', 'Unknown')}")
         print(f"  Category:    {prod.get('categories', 'Uncategorized')}")
         print(f"  Ingredients: {prod.get('ingredients_text', 'N/A')}")
+
+def main():
+    while True:
+        print("\n=== Inventory CLI Menu ===")
+        print("1. Add new inventory item")
+        print("2. View inventory details")
+        print("3. Update item price or stock level")
+        print("4. Delete a product")
+        print("5. Find item on external API")
+        print("0. Exit")
+
+        choice = input("Select an option (0-5): ").strip()
+        if choice == "1":
+            add_item()
+        elif choice == "2":
+            view_items()
+        elif choice == "3":
+            update_price_or_stock()
+        elif choice == "4":
+            delete_item()
+        elif choice == "5":
+            find_on_api()
+        elif choice == "0":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid option. Choose 0-5.")
+
+
+if __name__ == "__main__":
+    main()
