@@ -67,7 +67,7 @@ def create_initial_inventory_array():
             product_name=prod["product_name"],
             barcode=prod["code"],
             categories=prod["categories"],
-            ingredients=prod["ingredinets"],
+            ingredients_text=prod["ingredients_text"],
             quantity=record["quantity"],
             price=record["price"]
         )

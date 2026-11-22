@@ -1,41 +1,57 @@
 from flask import Flask,request,jsonify
+# from flask_cors import CORS
+import requests
+from product import Product
+from mock_db import create_initial_inventory_array,search_mock_openfoodfacts
+
 
 app=Flask(__name__)
+# CORS(app)
 
-class Product:
-    def __init__(self, id,name, quantity,packaging,brands,categories,origin):
-      self.id=id
-      self.name = name
-      self.quantity = quantity
-      self.packaging=packaging
-      self.brands=brands
-      self.categories=categories
-      self.origin=origin
 
-    def to_dict(self):
-        return {
-            "id":self.id,
-            "name":self.name,
-            "quantity":self.quantity,
-            "packaging":self.packaging,
-            "brands":self.brands,
-            "categories":self.categories,
-            "origin":self.origin
-
-        }
-
-url="https://world.openfoodfacts.org/"
       
+inventory=create_initial_inventory_array()
+next_id=max((item.id for item in inventory),default=0)+1
 
+def find_product_by_id(id):
+    for product in inventory:
+        if product.id==id:
+            return product
+    return None
 
-@app.route('/')
+def fetch_openfoodfacts(barcode="",name=""):
+    barcode=(barcode or "").strip()
+    name=(name or "").strip()
+
+    try:
+        if barcode:
+            url=f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+            res=requests.get(url)
+            if res.status_code==200:
+                data=res.json()
+                if data.get("status")==1 and data.get("product"):
+                    return {"status":1, "product":data["product"]}
+
+        elif name:
+            clean_url_name=name.replace(" ", "+")
+            url=(
+                f"https://world.openfoodfacts.org/cgi/search.pl"
+                f"?search_terms={clean_url_name}&search_simple=1&action=process&json=1&page_size=1"
+            )
+            res=requests.get(url)
+            if res.status_code==200:
+                products=res.json().get("products",[])
+                if products:
+                    return {"status":1, "product":products[0]}
+    except requests.RequestException:
+        pass
+    return search_mock_openfoodfacts(barcode=barcode,name=name)
+
+@app.route("/")
 def index():
-    return "<h1>Welcome to Open Food Facts</h1>"
+    return "<h1>Open Food Facts</h1>"
 
-@app.route('/products',methods=['GET'])
-def get_products():
-    data=request.get_json(url)
-    return jsonify(data)
+@app.route("/inventory",methods=['GET'])
 
 
 
