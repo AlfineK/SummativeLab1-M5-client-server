@@ -1,12 +1,12 @@
 from flask import Flask,request,jsonify
-# from flask_cors import CORS
+from flask_cors import CORS
 import requests
 from product import Product
 from mock_db import create_initial_inventory_array,search_mock_openfoodfacts
 
 
 app=Flask(__name__)
-# CORS(app)
+CORS(app)
 
 
       
